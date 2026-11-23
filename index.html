@@ -32,7 +32,7 @@
 
       <!-- Mode silhouettes -->
       <div class="mode" data-mode="silhouettes">
-        <p class="lead">Photographiez l'objet <b>de face</b>, <b>de droite</b> et <b>de dessus</b> sur fond uni. Une seule vue = extrusion (pièce plate, découpe, logo…).</p>
+        <p class="lead">Photographiez l'objet <b>de face</b>, <b>de droite</b> et <b>de dessus</b> sur fond uni. Une seule vue = extrusion (pièce plate, découpe, logo…). Une règle sur la photo ? Utilisez 📏 Étalonner.</p>
         <div class="slots" id="slots-silhouettes"></div>
         <fieldset>
           <legend>Cotes (mm) <small>— laissez vide pour déduire des proportions</small></legend>
@@ -101,6 +101,7 @@
         <button type="button" id="generate" class="primary">⚙️ Générer le modèle 3D</button>
         <button type="button" id="download" class="secondary" disabled>⬇️ Télécharger le STL</button>
       </div>
+      <button type="button" id="reset" class="link">⟲ Réinitialiser les réglages</button>
       <p id="status" class="status" role="status"></p>
 
       <details class="tips">
@@ -109,7 +110,8 @@
           <li><b>Fond uni et contrasté</b> (feuille blanche pour un objet sombre, et inversement), éclairage diffus sans ombre portée marquée.</li>
           <li><b>Reculez et zoomez</b> : cela réduit la perspective et rend les silhouettes plus fidèles.</li>
           <li>Visez <b>perpendiculairement</b> à la face photographiée, appareil bien droit.</li>
-          <li>Posez une <b>règle ou un objet de taille connue</b> dans le même plan que l'objet, puis utilisez 📏 Étalonner.</li>
+          <li>Posez une <b>règle</b> à côté de l'objet, dans le même plan et sans le toucher. Avec 📏 Étalonner, cliquez deux graduations (ex. 0 et 100) et saisissez la distance : la règle donne l'échelle et elle est retirée du détourage automatiquement.</li>
+          <li>Si une règle ou un autre élément reste détouré avec l'objet : ✂️ Zone de l'objet (tracer un cadre) ou 👆 Choisir l'objet (cliquer dessus).</li>
           <li>Vue de droite : l'avant de l'objet à gauche de la photo. Vue de dessus : l'avant en bas de la photo. Sinon cochez « Miroir ».</li>
           <li>L'enveloppe par silhouettes ne reproduit pas les creux invisibles de profil (intérieur d'une tasse…) : complétez si besoin dans un logiciel de CAO.</li>
         </ul>

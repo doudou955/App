@@ -55,6 +55,60 @@ export function otsu(values, max, bins = 256) {
   return (bestT + 0.5) / k;
 }
 
+/** Ne garde que la composante connexe (4-connexité) contenant le pixel p. */
+export function componentAt(mask, w, h, p) {
+  const out = new Uint8Array(w * h);
+  if (!mask[p]) return out;
+  const queue = new Int32Array(w * h);
+  let head = 0, tail = 0;
+  queue[tail++] = p; out[p] = 1;
+  while (head < tail) {
+    const q = queue[head++];
+    const x = q % w, y = (q - x) / w;
+    if (x > 0 && mask[q - 1] && !out[q - 1]) { out[q - 1] = 1; queue[tail++] = q - 1; }
+    if (x < w - 1 && mask[q + 1] && !out[q + 1]) { out[q + 1] = 1; queue[tail++] = q + 1; }
+    if (y > 0 && mask[q - w] && !out[q - w]) { out[q - w] = 1; queue[tail++] = q - w; }
+    if (y < h - 1 && mask[q + w] && !out[q + w]) { out[q + w] = 1; queue[tail++] = q + w; }
+  }
+  return out;
+}
+
+/** Pixel objet le plus proche de (x, y) dans un rayon r, ou -1. */
+function nearestOn(mask, w, h, x, y, r) {
+  x = Math.round(x); y = Math.round(y);
+  let best = -1, bd = Infinity;
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const xx = x + dx, yy = y + dy;
+      if (xx < 0 || yy < 0 || xx >= w || yy >= h || !mask[yy * w + xx]) continue;
+      const d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = yy * w + xx; }
+    }
+  }
+  return best;
+}
+
+/**
+ * Retire les composantes touchées par les segments donnés (ex. la règle sur
+ * laquelle on a mesuré). Ne fait rien si cela vide le masque.
+ */
+export function excludeAlongSegments(mask, w, h, segments) {
+  const out = mask.slice();
+  for (const [a, b] of segments) {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const n = Math.max(2, Math.ceil(len));
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const p = nearestOn(out, w, h, a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]), 1);
+      if (p < 0) continue;
+      const comp = componentAt(out, w, h, p);
+      for (let q = 0; q < w * h; q++) if (comp[q]) out[q] = 0;
+    }
+  }
+  for (let q = 0; q < w * h; q++) if (out[q]) return out;
+  return mask;
+}
+
 /** Ne garde que la plus grande composante connexe (4-connexité). */
 export function keepLargestComponent(mask, w, h) {
   const labels = new Int32Array(w * h);
@@ -173,7 +227,24 @@ export function computeMask(img, opts = {}) {
     for (let p = 0; p < w * h; p++) mask[p] = dist[p] > threshold ? 1 : 0;
   }
   if (opts.invert) for (let p = 0; p < w * h; p++) mask[p] = 1 - mask[p];
-  if (opts.largest !== false) mask = keepLargestComponent(mask, w, h);
+  // Zone de l'objet : tout ce qui est hors du cadre est du fond.
+  const roi = opts.roi;
+  if (roi) {
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (x < roi.x0 || x > roi.x1 || y < roi.y0 || y > roi.y1) mask[y * w + x] = 0;
+      }
+    }
+  }
+  // Règle / objet de référence à exclure.
+  if (opts.exclude?.length) mask = excludeAlongSegments(mask, w, h, opts.exclude);
+  // Objet désigné par un clic, sinon la plus grande composante.
+  let seeded = false;
+  if (opts.seed) {
+    const p = nearestOn(mask, w, h, opts.seed[0], opts.seed[1], 6);
+    if (p >= 0) { mask = componentAt(mask, w, h, p); seeded = true; }
+  }
+  if (!seeded && opts.largest !== false) mask = keepLargestComponent(mask, w, h);
   if (opts.fillHoles !== false) mask = fillHoles(mask, w, h);
   if (opts.adjust) mask = adjustContour(mask, w, h, opts.adjust);
   return { mask, threshold, bg, useAlpha, bbox: boundingBox(mask, w, h) };

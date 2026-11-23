@@ -114,3 +114,16 @@ test('STL binaire : aller-retour', () => {
   const p = parseBinarySTL(buf);
   assert.equal(p.count, s.indices.length / 3);
 });
+
+test('règle à côté : exclusion par le segment étalonné, zone et choix de l\'objet', () => {
+  // Objet 40×40 et règle 200×20 (plus grande que l'objet), séparés.
+  const img = makeImage(300, 200, (x, y) => (x >= 30 && x < 70 && y >= 30 && y < 70) || (x >= 50 && x < 250 && y >= 150 && y < 170));
+  assert.deepEqual(computeMask(img).bbox, { x0: 50, y0: 150, x1: 249, y1: 169 }, 'sans aide, la règle gagne');
+  const obj = { x0: 30, y0: 30, x1: 69, y1: 69 };
+  assert.deepEqual(computeMask(img, { exclude: [[[60, 160], [160, 160]]] }).bbox, obj);
+  assert.deepEqual(computeMask(img, { roi: { x0: 10, y0: 10, x1: 100, y1: 100 } }).bbox, obj);
+  assert.deepEqual(computeMask(img, { seed: [45, 45] }).bbox, obj);
+  // Mesure faite sur l'objet lui-même sans autre composante : on ne vide pas le masque.
+  const solo = makeImage(100, 100, (x, y) => x >= 30 && x < 70 && y >= 30 && y < 70);
+  assert.ok(computeMask(solo, { exclude: [[[30, 50], [69, 50]]] }).bbox);
+});

@@ -39,6 +39,23 @@ for (const id of ['silRes', 'silSmooth', 'revSeg', 'revSmooth', 'relRes', 'relBl
   el.addEventListener('input', () => (out.textContent = el.value));
 }
 
+// Réinitialisation des réglages du mode courant (les photos sont conservées).
+const modeSlots = { silhouettes: ['front', 'side', 'top'], revolution: ['profile'], relief: ['relief'] };
+const placeholders = new Map([...document.querySelectorAll('.mode input')].map((el) => [el, el.placeholder]));
+$('#reset').addEventListener('click', () => {
+  const root = document.querySelector(`.mode[data-mode="${state.mode}"]`);
+  root.querySelectorAll('fieldset input, fieldset select').forEach((el) => {
+    if (el.type === 'checkbox') el.checked = el.defaultChecked;
+    else if (el.tagName === 'SELECT') el.selectedIndex = Math.max(0, [...el.options].findIndex((o) => o.defaultSelected));
+    else el.value = el.defaultValue;
+    if (placeholders.has(el)) el.placeholder = placeholders.get(el);
+    el.title = '';
+    el.dispatchEvent(new Event('input'));
+  });
+  for (const k of modeSlots[state.mode]) slots[k].reset();
+  setStatus('Réglages réinitialisés (photos conservées).', 'ok');
+});
+
 // L'aperçu 3D est chargé à part : si WebGL ou three.js manquent, l'export STL reste possible.
 let viewer = null;
 import('./viewer.js')

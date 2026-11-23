@@ -30,12 +30,13 @@ Ouvrir `index.html` directement en `file://` ne fonctionne pas, car les modules 
 ### Cotes et étalonnage
 
 - **Saisie directe** : entrez une ou plusieurs dimensions réelles en mm. Les cotes manquantes sont déduites des proportions des silhouettes (ex. la hauteur saisie + la vue de face donnent la largeur, la vue de droite donne alors la profondeur).
-- **📏 Étalonner** : cliquez deux points d'une distance connue sur la photo (une règle posée à côté de l'objet, un trou de diamètre connu…) puis saisissez cette distance. L'échelle mm/px de la photo sert alors à dimensionner automatiquement.
+- **📏 Étalonner** : cliquez deux points d'une distance connue sur la photo (deux graduations d'une règle posée à côté de l'objet, un trou de diamètre connu…) puis saisissez cette distance. L'échelle mm/px de la photo sert alors à dimensionner automatiquement. Si la mesure est prise sur une règle (case cochée par défaut), la règle est retirée du détourage.
 - Les cotes saisies sont prioritaires sur l'étalonnage, qui est lui-même prioritaire sur les proportions.
 
 ### Détourage
 
-Le fond est détecté automatiquement (couleur médiane du bord de la photo et seuil d'Otsu). Ajustez si besoin avec la **tolérance**, la **🎯 pipette** (cliquer sur le fond), **Contour ±px** (rogner une ombre ou épaissir), **Inverser** ou **Boucher les trous**. Les PNG détourés (fond transparent) sont gérés directement.
+Le fond est détecté automatiquement (couleur médiane du bord de la photo et seuil d'Otsu). Ajustez si besoin avec la **tolérance**, la **🎯 pipette** (cliquer sur le fond), **Contour ±px** (rogner une ombre ou épaissir), **Inverser** ou **Boucher les trous**. Si un autre élément (règle, ombre…) est détouré avec l'objet : **✂️ Zone de l'objet** (tracer un cadre) ou **👆 Choisir l'objet** (cliquer dessus).
+**⟲ Réinitialiser** remet à zéro les réglages d'une photo ; le bouton sous « Générer » remet à zéro tout le mode en gardant les photos. Les PNG détourés (fond transparent) sont gérés directement.
 
 ## Conseils de prise de vue
 
