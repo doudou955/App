@@ -10,7 +10,13 @@ npm start          # serveur statique sans dépendance → http://localhost:8080
 npm test           # tests de la géométrie (Node ≥ 18)
 ```
 
-Le dossier peut aussi être publié tel quel sur n'importe quel hébergement statique (GitHub Pages, Netlify…).
+Le dossier peut aussi être publié tel quel sur n'importe quel hébergement statique (Netlify…).
+
+### Publication GitHub Pages
+
+Le workflow `.github/workflows/pages.yml` lance les tests puis publie le site à chaque push sur `main` (ou sur la branche de développement). Il peut aussi être lancé à la main depuis l'onglet *Actions*.
+À faire une seule fois : **Settings → Pages → Build and deployment → Source : « GitHub Actions »**.
+Le site est ensuite servi à l'adresse `https://<utilisateur>.github.io/<dépôt>/`. Tous les chemins sont relatifs, donc ce sous-dossier fonctionne sans configuration.
 Ouvrir `index.html` directement en `file://` ne fonctionne pas, car les modules ES exigent un serveur HTTP.
 
 ## Les trois modes
