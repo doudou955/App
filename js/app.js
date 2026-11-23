@@ -39,6 +39,15 @@ for (const id of ['silRes', 'silSmooth', 'revSeg', 'revSmooth', 'relRes', 'relBl
   el.addEventListener('input', () => (out.textContent = el.value));
 }
 
+// Options du mode creux affichées seulement si coché.
+const syncHollow = () => {
+  const on = $('#revHollow').checked;
+  $('#revHollowOpts').hidden = !on;
+  $('#revHollowHint').hidden = !on;
+};
+$('#revHollow').addEventListener('change', syncHollow);
+$('#revHollow').addEventListener('input', syncHollow);
+
 // Réinitialisation des réglages du mode courant (les photos sont conservées).
 const modeSlots = { silhouettes: ['front', 'side', 'top'], revolution: ['profile'], relief: ['relief'] };
 const placeholders = new Map([...document.querySelectorAll('.mode input')].map((el) => [el, el.placeholder]));
@@ -96,10 +105,16 @@ function generate() {
       axis: $('#revAxis').value,
       segments: Number($('#revSeg').value),
       smoothing: Number($('#revSmooth').value),
+      hollow: $('#revHollow').checked,
+      wall: num('#revWall') ?? 2,
+      bottom: parseFloat(String($('#revBottom').value).replace(',', '.')) || 0,
     });
     if (!num('#revH')) $('#revH').placeholder = r.height.toFixed(1);
     if (!num('#revD')) $('#revD').placeholder = r.diameter.toFixed(1);
-    return { mesh: r.mesh };
+    const notes = [];
+    if (r.capacity != null) notes.push(`contenance ≈ ${(r.capacity / 1000).toFixed(r.capacity < 100000 ? 1 : 0)} mL`);
+    if (r.warning) notes.push(`⚠️ ${r.warning}`);
+    return { mesh: r.mesh, note: notes.join(' · ') };
   }
   const view = slots.relief.view;
   if (!view) throw new Error('Ajoutez une image.');

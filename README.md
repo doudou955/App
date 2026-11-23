@@ -24,7 +24,7 @@ Ouvrir `index.html` directement en `file://` ne fonctionne pas, car les modules 
 | Mode | Photos | Cotes | Pour quoi ? |
 |---|---|---|---|
 | **Silhouettes** | 1 à 3 vues : face, droite, dessus | largeur X, profondeur Y, hauteur Z (une seule suffit) | objets pleins, pièces mécaniques simples, figurines grossières ; **1 seule vue = extrusion** (pièce plate, logo, gabarit) |
-| **Révolution** | 1 photo de profil | hauteur et/ou diamètre max | vases, bouteilles, boutons, pieds, pions… (objets symétriques autour d'un axe) |
+| **Révolution** | 1 photo de profil | hauteur et/ou diamètre max ; en option **creux** : épaisseur de paroi et de fond | vases, pots, gobelets (creux, ouverts en haut), bouteilles, boutons, pieds, pions… (objets symétriques autour d'un axe) |
 | **Relief / Lithophanie** | 1 image | largeur, épaisseur min/max, cadre | lithophanies, bas-reliefs, plaques |
 
 ### Cotes et étalonnage
@@ -49,6 +49,7 @@ Le fond est détecté automatiquement (couleur médiane du bord de la photo et s
 
 - **Silhouettes** : *enveloppe visuelle* (visual hull). Chaque silhouette, mise à l'échelle des cotes, est extrudée selon son axe de vue. L'intersection est échantillonnée sur une grille de voxels avec des valeurs anti-crénelées, puis la surface est extraite par *Surface Nets* et lissée par un filtre de Taubin, qui préserve le volume.
 - **Révolution** : la demi-largeur de la silhouette, ligne par ligne, donne un profil qui est tourné autour de l'axe Z (*lathe*), avec des bouchons en haut et en bas.
+  Avec l'option **creux**, la section fermée (paroi extérieure, lèvre, paroi intérieure, fond) est révolutionnée : la paroi intérieure est décalée de l'épaisseur voulue perpendiculairement à la paroi, la contenance est affichée, et un col trop étroit pour l'épaisseur demandée est signalé.
 - **Relief** : la luminance devient une hauteur, et le solide est fermé par des parois latérales et un fond plat.
 
 Les maillages produits sont **fermés (étanches) et orientés** (normales vers l'extérieur), ce que vérifient les tests. L'export se fait en STL binaire, en millimètres.

@@ -127,3 +127,21 @@ test('règle à côté : exclusion par le segment étalonné, zone et choix de l
   const solo = makeImage(100, 100, (x, y) => x >= 30 && x < 70 && y >= 30 && y < 70);
   assert.ok(computeMask(solo, { exclude: [[[30, 50], [69, 50]]] }).bbox);
 });
+
+test('révolution creuse : vase cylindrique étanche, volume et contenance', async () => {
+  const { hollowVase } = await import('../js/revolution.js');
+  const profile = Array.from({ length: 101 }, (_, i) => ({ z: i, r: 20 }));
+  const { mesh, capacity, warning } = hollowVase(profile, { wall: 2, bottom: 3, segments: 256 });
+  assert.ok(isWatertight(mesh));
+  const v = signedVolume(mesh);
+  const expected = Math.PI * 20 * 20 * 100 - Math.PI * 18 * 18 * 97;
+  assert.ok(v > 0 && Math.abs(v - expected) / expected < 0.01, `volume ${v} ≈ ${expected}`);
+  assert.ok(Math.abs(capacity - Math.PI * 18 * 18 * 97) / capacity < 0.001);
+  assert.equal(warning, '');
+  // Col étroit : paroi amincie signalée, maillage toujours étanche.
+  const neck = Array.from({ length: 101 }, (_, i) => ({ z: i, r: i > 80 ? 2 : 20 }));
+  const r2 = hollowVase(neck, { wall: 2, bottom: 3, segments: 64 });
+  assert.ok(isWatertight(r2.mesh));
+  assert.match(r2.warning, /Col trop étroit/);
+  assert.throws(() => hollowVase(profile, { wall: 2, bottom: 99 }), /fond/);
+});

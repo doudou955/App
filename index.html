@@ -70,6 +70,15 @@
           </label>
         </fieldset>
         <fieldset>
+          <legend>Objet creux</legend>
+          <label class="check"><input type="checkbox" id="revHollow"> Creux, ouvert en haut (vase, pot, gobelet…)</label>
+          <div class="grid2" id="revHollowOpts" hidden>
+            <label>Épaisseur de paroi (mm)<input type="number" id="revWall" min="0.4" step="0.1" value="2" inputmode="decimal"></label>
+            <label>Épaisseur du fond (mm)<input type="number" id="revBottom" min="0" step="0.1" value="3" inputmode="decimal"></label>
+          </div>
+          <p class="hint" id="revHollowHint" hidden>La paroi suit la forme extérieure et son épaisseur est mesurée perpendiculairement à la paroi. Pour un vase étanche, prévoyez au moins 1,6 à 2 mm (4 à 5 lignes de buse 0,4 mm).</p>
+        </fieldset>
+        <fieldset>
           <legend>Qualité</legend>
           <label class="slider">Facettes <input type="range" id="revSeg" min="12" max="256" value="128"><span class="val" id="revSegVal">128</span></label>
           <label class="slider">Lissage profil <input type="range" id="revSmooth" min="0" max="10" value="2"><span class="val" id="revSmoothVal">2</span></label>

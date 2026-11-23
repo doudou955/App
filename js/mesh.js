@@ -310,3 +310,37 @@ export function heightfieldSolid(heights, gx, gy, sizeX, sizeY) {
   }
   return ensureOutward({ positions: new Float32Array(all), indices: new Uint32Array(out) });
 }
+
+/**
+ * Révolution autour de Z d'une section fermée : polyligne [{r, z}] dont le
+ * premier et le dernier point sont sur l'axe (r = 0). Les points intermédiaires
+ * doivent avoir r > 0. Donne un solide fermé (ex. vase creux).
+ */
+export function revolveSection(points, segments = 96, center = null) {
+  const S = segments;
+  const rmax = Math.max(...points.map((p) => p.r));
+  const cx = center ? center[0] : rmax, cy = center ? center[1] : rmax;
+  const pos = [];
+  const rings = points.map((p, i) => {
+    const pole = i === 0 || i === points.length - 1;
+    const start = pos.length / 3;
+    if (pole) { pos.push(cx, cy, p.z); return { pole: true, start }; }
+    for (let s = 0; s < S; s++) {
+      const th = (2 * Math.PI * s) / S;
+      pos.push(cx + p.r * Math.cos(th), cy + p.r * Math.sin(th), p.z);
+    }
+    return { pole: false, start };
+  });
+  const tris = [];
+  for (let i = 0; i < rings.length - 1; i++) {
+    const A = rings[i], B = rings[i + 1];
+    if (A.pole && B.pole) continue;
+    for (let s = 0; s < S; s++) {
+      const s1 = (s + 1) % S;
+      if (A.pole) tris.push(A.start, B.start + s1, B.start + s);
+      else if (B.pole) tris.push(A.start + s, A.start + s1, B.start);
+      else tris.push(A.start + s, A.start + s1, B.start + s1, A.start + s, B.start + s1, B.start + s);
+    }
+  }
+  return ensureOutward({ positions: new Float32Array(pos), indices: new Uint32Array(tris) });
+}
