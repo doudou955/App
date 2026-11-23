@@ -1,0 +1,12 @@
+{
+  "name": "photo2stl",
+  "version": "1.0.0",
+  "description": "Générer un fichier STL imprimable en 3D à partir de photos et de cotes.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "license": "MIT"
+}

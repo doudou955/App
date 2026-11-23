@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photo2STL</title>
+  <meta name="description" content="Générez un fichier STL imprimable en 3D à partir de photos et de cotes.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧊</text></svg>">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three/three.module.min.js",
+      "three/addons/": "./vendor/three/addons/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="top">
+    <h1>🧊 Photo2STL</h1>
+    <p>Photos + cotes → fichier STL prêt à imprimer. Tout est calculé dans votre navigateur : aucune photo n'est envoyée.</p>
+  </header>
+
+  <main class="layout">
+    <aside class="panel">
+      <nav class="tabs" role="tablist">
+        <button type="button" role="tab" data-mode="silhouettes" class="active">Silhouettes</button>
+        <button type="button" role="tab" data-mode="revolution">Révolution</button>
+        <button type="button" role="tab" data-mode="relief">Relief / Lithophanie</button>
+      </nav>
+
+      <!-- Mode silhouettes -->
+      <div class="mode" data-mode="silhouettes">
+        <p class="lead">Photographiez l'objet <b>de face</b>, <b>de droite</b> et <b>de dessus</b> sur fond uni. Une seule vue = extrusion (pièce plate, découpe, logo…).</p>
+        <div class="slots" id="slots-silhouettes"></div>
+        <fieldset>
+          <legend>Cotes (mm) <small>— laissez vide pour déduire des proportions</small></legend>
+          <div class="grid3">
+            <label>Largeur X<input type="number" id="dimW" min="0" step="0.1" inputmode="decimal" placeholder="auto"></label>
+            <label>Profondeur Y<input type="number" id="dimD" min="0" step="0.1" inputmode="decimal" placeholder="auto"></label>
+            <label>Hauteur Z<input type="number" id="dimH" min="0" step="0.1" inputmode="decimal" placeholder="auto"></label>
+          </div>
+          <p class="hint">Il suffit d'une cote (ou d'une photo étalonnée) : les autres sont déduites des silhouettes. Avec une seule vue de face, indiquez l'épaisseur (Y).</p>
+        </fieldset>
+        <fieldset>
+          <legend>Qualité</legend>
+          <label class="slider">Résolution <input type="range" id="silRes" min="32" max="220" value="110"><span class="val" id="silResVal">110</span></label>
+          <label class="slider">Lissage <input type="range" id="silSmooth" min="0" max="20" value="5"><span class="val" id="silSmoothVal">5</span></label>
+        </fieldset>
+      </div>
+
+      <!-- Mode révolution -->
+      <div class="mode" data-mode="revolution" hidden>
+        <p class="lead">Pour les objets symétriques autour d'un axe (vase, bouteille, bouton, pied de lampe…) : une photo de profil suffit.</p>
+        <div class="slots" id="slots-revolution"></div>
+        <fieldset>
+          <legend>Cotes (mm)</legend>
+          <div class="grid2">
+            <label>Hauteur totale<input type="number" id="revH" min="0" step="0.1" inputmode="decimal" placeholder="auto"></label>
+            <label>Diamètre maximal<input type="number" id="revD" min="0" step="0.1" inputmode="decimal" placeholder="auto"></label>
+          </div>
+          <p class="hint">Une cote suffit (ou l'étalonnage). Avec les deux, l'objet est mis à l'échelle indépendamment en hauteur et en diamètre.</p>
+          <label>Axe de révolution
+            <select id="revAxis">
+              <option value="center">Silhouette complète (axe au centre)</option>
+              <option value="left">Demi-profil : axe sur le bord gauche</option>
+              <option value="right">Demi-profil : axe sur le bord droit</option>
+            </select>
+          </label>
+        </fieldset>
+        <fieldset>
+          <legend>Qualité</legend>
+          <label class="slider">Facettes <input type="range" id="revSeg" min="12" max="256" value="128"><span class="val" id="revSegVal">128</span></label>
+          <label class="slider">Lissage profil <input type="range" id="revSmooth" min="0" max="10" value="2"><span class="val" id="revSmoothVal">2</span></label>
+        </fieldset>
+      </div>
+
+      <!-- Mode relief -->
+      <div class="mode" data-mode="relief" hidden>
+        <p class="lead">La luminosité de la photo devient une épaisseur : lithophanie (à regarder en transparence) ou bas-relief.</p>
+        <div class="slots" id="slots-relief"></div>
+        <fieldset>
+          <legend>Cotes (mm)</legend>
+          <div class="grid3">
+            <label>Largeur<input type="number" id="relW" min="1" step="0.1" value="100" inputmode="decimal"></label>
+            <label>Épaisseur min<input type="number" id="relMin" min="0.2" step="0.1" value="0.8" inputmode="decimal"></label>
+            <label>Épaisseur max<input type="number" id="relMax" min="0.4" step="0.1" value="3" inputmode="decimal"></label>
+          </div>
+          <label>Cadre (mm)<input type="number" id="relBorder" min="0" step="0.5" value="0" inputmode="decimal"></label>
+          <label class="check"><input type="checkbox" id="relLitho" checked> Lithophanie (zones sombres = épaisses)</label>
+        </fieldset>
+        <fieldset>
+          <legend>Qualité</legend>
+          <label class="slider">Points en largeur <input type="range" id="relRes" min="40" max="500" value="250"><span class="val" id="relResVal">250</span></label>
+          <label class="slider">Adoucir <input type="range" id="relBlur" min="0" max="5" value="0"><span class="val" id="relBlurVal">0</span></label>
+        </fieldset>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="generate" class="primary">⚙️ Générer le modèle 3D</button>
+        <button type="button" id="download" class="secondary" disabled>⬇️ Télécharger le STL</button>
+      </div>
+      <p id="status" class="status" role="status"></p>
+
+      <details class="tips">
+        <summary>Conseils de prise de vue</summary>
+        <ul>
+          <li><b>Fond uni et contrasté</b> (feuille blanche pour un objet sombre, et inversement), éclairage diffus sans ombre portée marquée.</li>
+          <li><b>Reculez et zoomez</b> : cela réduit la perspective et rend les silhouettes plus fidèles.</li>
+          <li>Visez <b>perpendiculairement</b> à la face photographiée, appareil bien droit.</li>
+          <li>Posez une <b>règle ou un objet de taille connue</b> dans le même plan que l'objet, puis utilisez 📏 Étalonner.</li>
+          <li>Vue de droite : l'avant de l'objet à gauche de la photo. Vue de dessus : l'avant en bas de la photo. Sinon cochez « Miroir ».</li>
+          <li>L'enveloppe par silhouettes ne reproduit pas les creux invisibles de profil (intérieur d'une tasse…) : complétez si besoin dans un logiciel de CAO.</li>
+        </ul>
+      </details>
+    </aside>
+
+    <section class="viewer-wrap">
+      <div id="viewer" class="viewer">
+        <div class="placeholder" id="placeholder">Ajoutez une photo puis cliquez sur « Générer »</div>
+      </div>
+      <div class="viewer-bar">
+        <span id="stats"></span>
+        <label class="check"><input type="checkbox" id="wire"> Maillage</label>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
