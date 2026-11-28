@@ -82,6 +82,10 @@ $('#wire').addEventListener('change', (e) => viewer?.setWireframe(e.target.check
 function generate() {
   if (state.mode === 'silhouettes') {
     const views = { front: slots.front.view, side: slots.side.view, top: slots.top.view };
+    const names = { front: 'de face', side: 'de droite', top: 'de dessus' };
+    for (const k of Object.keys(views)) {
+      if (views[k]?.bad) throw new Error(`Photo ${names[k]} : le détourage touche les bords de la photo (le fond est pris pour l'objet), le résultat serait un simple bloc. Corrigez-le d'abord (✂️ Zone de l'objet, 👆 Choisir l'objet ou 🎯 Pipette fond).`);
+    }
     if (!views.front && !views.side && !views.top) throw new Error('Ajoutez au moins une photo avec une silhouette détectée.');
     const dims = resolveDims(views, { W: num('#dimW'), D: num('#dimD'), H: num('#dimH') });
     for (const [k, id] of [['W', '#dimW'], ['D', '#dimD'], ['H', '#dimH']]) {
@@ -99,6 +103,7 @@ function generate() {
   if (state.mode === 'revolution') {
     const view = slots.profile.view;
     if (!view) throw new Error('Ajoutez une photo de profil avec une silhouette détectée.');
+    if (view.bad) throw new Error("Le détourage touche les bords de la photo (le fond est pris pour l'objet). Corrigez-le d'abord (✂️ Zone de l'objet, 👆 Choisir l'objet ou 🎯 Pipette fond).");
     const r = buildRevolution(view, {
       height: num('#revH'),
       diameter: num('#revD'),

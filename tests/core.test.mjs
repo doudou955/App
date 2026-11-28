@@ -145,3 +145,18 @@ test('révolution creuse : vase cylindrique étanche, volume et contenance', asy
   assert.match(r2.warning, /Col trop étroit/);
   assert.throws(() => hollowVase(profile, { wall: 2, bottom: 99 }), /fond/);
 });
+
+test('fond en deux tons (mur + table) et ombre portée : pas de « gros cube »', () => {
+  const w = 300, h = 220;
+  const img = makeImage(w, h, () => false);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    let c = y < 80 ? [205, 200, 190] : [150, 110, 80];
+    if (Math.hypot(x - 180, y - 165) < 45 && y >= 80) c = [90, 66, 48]; // ombre sur la table
+    if (x >= 120 && x < 180 && y >= 60 && y < 180) c = [60, 70, 90]; // objet
+    img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2];
+  }
+  const r = computeMask(img, { shadows: true });
+  assert.deepEqual(r.bbox, { x0: 120, y0: 60, x1: 179, y1: 179 });
+  assert.ok(r.coverage < 0.2);
+});

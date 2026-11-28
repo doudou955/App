@@ -112,6 +112,7 @@ button.link { margin-top: 8px; background: none; border: 0; padding: 4px 0; colo
 input[type=color] { width: 34px; height: 26px; border: 1px solid var(--line); border-radius: 6px; padding: 0; background: none; }
 .info { margin: 0; color: var(--muted); font-size: .82rem; }
 .info.prompt { color: var(--accent); font-weight: 600; }
+.info.warn { color: var(--err); font-weight: 600; }
 .val { min-width: 3ch; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 fieldset { border: 1px solid var(--line); border-radius: 10px; margin: 12px 0 0; padding: 8px 10px 10px; }

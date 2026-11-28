@@ -15,6 +15,52 @@ export function estimateBackground(data, w, h) {
   return [med(rs), med(gs), med(bs)];
 }
 
+/**
+ * Couleurs du fond : regroupement (k-moyennes) des pixels d'une bande le long
+ * du bord de la photo. Gère les fonds en plusieurs tons (mur + table, ombre
+ * portée sur le bord, dégradé d'éclairage…). Les groupes trop rares (objet qui
+ * touche le bord, bruit) sont ignorés.
+ */
+export function estimateBackgroundPalette(data, w, h, k = 5) {
+  const band = Math.max(2, Math.round(Math.min(w, h) * 0.02));
+  const step = Math.max(1, Math.floor((w + h) / 600));
+  const px = [];
+  const push = (x, y) => { const i = (y * w + x) * 4; px.push([data[i], data[i + 1], data[i + 2]]); };
+  for (let b = 0; b < band; b += Math.max(1, band >> 1)) {
+    for (let x = 0; x < w; x += step) { push(x, b); push(x, h - 1 - b); }
+    for (let y = 0; y < h; y += step) { push(b, y); push(w - 1 - b, y); }
+  }
+  const d2 = (a, c) => (a[0] - c[0]) ** 2 + (a[1] - c[1]) ** 2 + (a[2] - c[2]) ** 2;
+  // Initialisation : point médian puis points les plus éloignés.
+  const med = estimateBackground(data, w, h);
+  const centers = [med];
+  while (centers.length < k) {
+    let best = null, bd = -1;
+    for (const p of px) {
+      const d = Math.min(...centers.map((c) => d2(p, c)));
+      if (d > bd) { bd = d; best = p; }
+    }
+    if (bd < 20 * 20) break; // fond déjà bien couvert
+    centers.push(best.slice());
+  }
+  let counts = [];
+  for (let it = 0; it < 12; it++) {
+    const sums = centers.map(() => [0, 0, 0]);
+    counts = centers.map(() => 0);
+    for (const p of px) {
+      let bi = 0, bd = Infinity;
+      for (let c = 0; c < centers.length; c++) { const d = d2(p, centers[c]); if (d < bd) { bd = d; bi = c; } }
+      sums[bi][0] += p[0]; sums[bi][1] += p[1]; sums[bi][2] += p[2]; counts[bi]++;
+    }
+    for (let c = 0; c < centers.length; c++) {
+      if (counts[c]) centers[c] = sums[c].map((v) => v / counts[c]);
+    }
+  }
+  const keep = centers.filter((c, i) => counts[i] >= px.length * 0.06);
+  keep.sort((a, b) => counts[centers.indexOf(b)] - counts[centers.indexOf(a)]);
+  return keep.length ? keep.map((c) => c.map(Math.round)) : [med];
+}
+
 /** Vrai si une part significative de l'image est transparente (PNG détouré). */
 export function hasTransparency(data) {
   let n = 0;
@@ -23,13 +69,67 @@ export function hasTransparency(data) {
   return n > total * 0.01;
 }
 
-/** Distance RVB de chaque pixel à la couleur de fond. */
-export function distanceMap(data, w, h, bg) {
+/** Distance RVB de chaque pixel à la couleur de fond la plus proche (bg : couleur ou liste de couleurs). */
+export function distanceMap(data, w, h, bg, shadows = false) {
+  const pal = Array.isArray(bg[0]) ? bg : [bg];
   const out = new Float32Array(w * h);
   for (let p = 0, i = 0; p < w * h; p++, i += 4) {
-    const dr = data[i] - bg[0], dg = data[i + 1] - bg[1], db = data[i + 2] - bg[2];
-    out[p] = Math.sqrt(dr * dr + dg * dg + db * db);
+    let m = Infinity;
+    for (const c of pal) {
+      const dr = data[i] - c[0], dg = data[i + 1] - c[1], db = data[i + 2] - c[2];
+      let d = dr * dr + dg * dg + db * db;
+      if (shadows) {
+        // Ombre = même couleur que le fond, assombrie : on mesure l'écart de teinte seulement.
+        const cc = c[0] * c[0] + c[1] * c[1] + c[2] * c[2] || 1;
+        const a = (data[i] * c[0] + data[i + 1] * c[1] + data[i + 2] * c[2]) / cc;
+        if (a > 0.35 && a < 1) {
+          const er = data[i] - a * c[0], eg = data[i + 1] - a * c[1], eb = data[i + 2] - a * c[2];
+          const ds = (er * er + eg * eg + eb * eb) * 4;
+          if (ds < d) d = ds;
+        }
+      }
+      if (d < m) m = d;
+    }
+    out[p] = Math.sqrt(m);
   }
+  return out;
+}
+
+/**
+ * Choisit la composante « objet » : la plus grande, mais les régions collées
+ * au bord de la photo (mur, table, bord de feuille…) sont fortement pénalisées.
+ */
+export function keepObjectComponent(mask, w, h) {
+  const labels = new Int32Array(w * h);
+  const queue = new Int32Array(w * h);
+  const comps = [{}];
+  for (let s = 0; s < w * h; s++) {
+    if (!mask[s] || labels[s]) continue;
+    const label = comps.length;
+    let head = 0, tail = 0, size = 0, edge = 0;
+    queue[tail++] = s; labels[s] = label;
+    while (head < tail) {
+      const p = queue[head++]; size++;
+      const x = p % w, y = (p - x) / w;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) edge++;
+      if (x > 0 && mask[p - 1] && !labels[p - 1]) { labels[p - 1] = label; queue[tail++] = p - 1; }
+      if (x < w - 1 && mask[p + 1] && !labels[p + 1]) { labels[p + 1] = label; queue[tail++] = p + 1; }
+      if (y > 0 && mask[p - w] && !labels[p - w]) { labels[p - w] = label; queue[tail++] = p - w; }
+      if (y < h - 1 && mask[p + w] && !labels[p + w]) { labels[p + w] = label; queue[tail++] = p + w; }
+    }
+    comps.push({ size, edge });
+  }
+  const minSize = w * h * 0.002;
+  let best = 0, bestScore = -1;
+  for (let l = 1; l < comps.length; l++) {
+    const c = comps[l];
+    // Pénalité proportionnelle à la longueur de bord touchée.
+    const edgeFrac = c.edge / (2 * (w + h));
+    const score = c.size * (c.edge ? Math.max(0.02, 0.3 - edgeFrac) : 1) * (c.size >= minSize ? 1 : 0.001);
+    if (score > bestScore) { bestScore = score; best = l; }
+  }
+  const out = new Uint8Array(w * h);
+  if (best) for (let p = 0; p < w * h; p++) out[p] = labels[p] === best ? 1 : 0;
   return out;
 }
 
@@ -221,8 +321,10 @@ export function computeMask(img, opts = {}) {
   if (useAlpha) {
     for (let p = 0; p < w * h; p++) mask[p] = data[p * 4 + 3] >= 128 ? 1 : 0;
   } else {
-    if (!bg) bg = estimateBackground(data, w, h);
-    const dist = distanceMap(data, w, h, bg);
+    const palette = estimateBackgroundPalette(data, w, h);
+    if (opts.bg) palette.unshift(opts.bg); // couleur choisie à la pipette
+    bg = palette[0];
+    const dist = distanceMap(data, w, h, palette, !!opts.shadows);
     threshold = opts.tolerance ?? otsu(dist, 442);
     for (let p = 0; p < w * h; p++) mask[p] = dist[p] > threshold ? 1 : 0;
   }
@@ -244,8 +346,13 @@ export function computeMask(img, opts = {}) {
     const p = nearestOn(mask, w, h, opts.seed[0], opts.seed[1], 6);
     if (p >= 0) { mask = componentAt(mask, w, h, p); seeded = true; }
   }
-  if (!seeded && opts.largest !== false) mask = keepLargestComponent(mask, w, h);
+  if (!seeded && opts.largest !== false) mask = keepObjectComponent(mask, w, h);
   if (opts.fillHoles !== false) mask = fillHoles(mask, w, h);
   if (opts.adjust) mask = adjustContour(mask, w, h, opts.adjust);
-  return { mask, threshold, bg, useAlpha, bbox: boundingBox(mask, w, h) };
+  const bbox = boundingBox(mask, w, h);
+  // Part de la photo occupée par la boîte englobante : proche de 1 = détourage raté.
+  const coverage = bbox ? ((bbox.x1 - bbox.x0 + 1) * (bbox.y1 - bbox.y0 + 1)) / (w * h) : 0;
+  // Nombre de bords de la photo touchés par la silhouette : ≥ 2 = le fond a été pris pour l'objet.
+  const edges = bbox ? (bbox.x0 === 0) + (bbox.y0 === 0) + (bbox.x1 === w - 1) + (bbox.y1 === h - 1) : 0;
+  return { mask, threshold, bg, useAlpha, bbox, coverage, edges };
 }

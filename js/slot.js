@@ -6,7 +6,7 @@ const WORK_MAX = 900; // résolution de travail (côté le plus long)
 
 const hex = (c) => '#' + c.map((v) => v.toString(16).padStart(2, '0')).join('');
 const unhex = (s) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16));
-const defaultOpts = () => ({ autoTol: true, tolerance: 60, invert: false, flip: false, adjust: 0, bg: null, fillHoles: true });
+const defaultOpts = () => ({ autoTol: true, tolerance: 60, invert: false, flip: false, adjust: 0, bg: null, fillHoles: true, shadows: false });
 
 async function loadBitmap(file) {
   try {
@@ -92,6 +92,7 @@ export class ImageSlot {
         <div class="row checks">
           <label><input type="checkbox" data-opt="invert"> Inverser objet/fond</label>
           <label><input type="checkbox" data-opt="fillHoles" checked> Boucher les trous</label>
+          <label title="Retire les ombres portées sur le fond. À éviter pour un objet gris sur fond blanc."><input type="checkbox" data-opt="shadows"> Ignorer les ombres</label>
           ${flip ? '<label><input type="checkbox" data-opt="flip"> Miroir</label>' : ''}
         </div>` : ''}
       </div>`;
@@ -217,6 +218,7 @@ export class ImageSlot {
     q('adjust').value = this.opts.adjust;
     q('invert').checked = this.opts.invert;
     q('fillHoles').checked = this.opts.fillHoles;
+    q('shadows').checked = this.opts.shadows;
     if (q('flip')) q('flip').checked = this.opts.flip;
     this.tools.querySelector('.adjust-val').textContent = `${this.opts.adjust > 0 ? '+' : ''}${this.opts.adjust} px`;
   }
@@ -307,6 +309,7 @@ export class ImageSlot {
         tolerance: this.opts.autoTol ? null : this.opts.tolerance,
         invert: this.opts.invert,
         fillHoles: this.opts.fillHoles,
+        shadows: this.opts.shadows,
         adjust: this.opts.adjust,
         roi: this.roi,
         seed: this.seed,
@@ -440,6 +443,7 @@ export class ImageSlot {
         const bw = b.x1 - b.x0 + 1, bh = b.y1 - b.y0 + 1;
         parts.push(`Silhouette : ${bw} × ${bh} px`);
         if (this.scale) parts.push(`≈ ${(bw * this.scale).toFixed(1)} × ${(bh * this.scale).toFixed(1)} mm`);
+        if (this.badCutout) parts.unshift('⚠️ Le détourage touche les bords de la photo : le fond est pris pour l\'objet. Utilisez ✂️ Zone de l\'objet, 👆 Choisir l\'objet ou 🎯 Pipette fond.');
       }
       if (this.result?.useAlpha) parts.push('(transparence PNG utilisée)');
     } else {
@@ -447,6 +451,7 @@ export class ImageSlot {
     }
     if (this.scale) parts.push(`📏 ${this.calib.mm} mm étalonnés (${this.scale.toFixed(4)} mm/px)`);
     this.info.textContent = parts.join(' · ');
+    this.info.classList.toggle('warn', this.badCutout);
   }
 
   /** Données prêtes pour la reconstruction, ou null si pas de photo. */
@@ -462,6 +467,12 @@ export class ImageSlot {
       flip: this.opts.flip,
       scale: this.scale,
       image: this.image,
+      bad: this.badCutout,
     };
+  }
+
+  /** Détourage manifestement raté : la silhouette occupe presque tout le cadre. */
+  get badCutout() {
+    return !!(this.segment && this.result && !this.result.useAlpha && (this.result.coverage > 0.9 || this.result.edges >= 2));
   }
 }
